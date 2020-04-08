@@ -8,6 +8,7 @@ services:
 #            - PROMETHEUS_ADDR=:7979
 #            - REFRESH_INTERVAL=15
             - DEBUG=true
+#            - ENABLE_NEW_API=true
 
 networks:
   default:

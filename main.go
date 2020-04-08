@@ -25,7 +25,7 @@ var (
 	debug               = flag.Bool("debug", false, "Enable debug output.")
 	algorithm           = flag.String("algorithm", "", "The SASL algorithm sha256 or sha512 as mechanism")
 	enableCurrentOffset = flag.Bool("enable-current-offset", false, "Enables metrics for current offset of a consumer group")
-	enableNewAPI        = flag.Bool("enable-new-api", false, "Enables new API, which allows to use optimized Kafka API calls")
+	enableNewAPI        = flag.Bool("enable-new-api", true, "Enables new API, which allows to use optimized Kafka API calls")
 )
 
 type TopicSet map[string]map[int32]int64
@@ -208,6 +208,10 @@ func refreshBroker(broker *sarama.Broker, topicSet TopicSet) {
 }
 
 func refreshBrokerV2(broker *sarama.Broker, client sarama.Client) {
+	if *debug {
+		log.Printf("Refreshing broker %d using new API", broker.ID())
+	}
+
 	groupsRequest := new(sarama.ListGroupsRequest)
 	groupsResponse, err := broker.ListGroups(groupsRequest)
 
@@ -233,10 +237,6 @@ func refreshBrokerV2(broker *sarama.Broker, client sarama.Client) {
 		for topic, partitions := range offsetsResponse.Blocks {
 
 			for partition, block := range partitions {
-				if *debug {
-					log.Printf("Discovered group: %s, topic: %s, partition: %d, offset: %d\n", group, topic, partition, block.Offset)
-				}
-
 				partitionLatestOffset, err := client.GetOffset(topic, partition, sarama.OffsetNewest)
 
 				if err != nil {
@@ -253,6 +253,10 @@ func refreshBrokerV2(broker *sarama.Broker, client sarama.Client) {
 						"topic": topic, "group": group,
 						"partition": strconv.FormatInt(int64(partition), 10),
 					}).Set(math.Max(float64(block.Offset), 0))
+				}
+
+				if *debug {
+					log.Printf("[Broker: %d] Discovered group: %s, topic: %s, partition: %d, offset: %d, end: %d, lag: %.0f\n", broker.ID(), group, topic, partition, block.Offset, partitionLatestOffset, lag)
 				}
 			}
 		}
