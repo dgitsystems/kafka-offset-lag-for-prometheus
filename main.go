@@ -17,7 +17,7 @@ import (
 
 var (
 	activeOnly          = flag.Bool("active-only", false, "Show only consumers with an active consumer protocol.")
-	kafkaBrokers        = flag.String("kafka-brokers", "localhost:9092", "Comma separated list of kafka brokers.")
+	kafkaBrokers        = flag.String("kafka-brokers", "kafka:9092", "Comma separated list of kafka brokers.")
 	prometheusAddr      = flag.String("prometheus-addr", ":7979", "Prometheus listen interface and port.")
 	refreshInt          = flag.Int("refresh-interval", 15, "Time between offset refreshes in seconds.")
 	saslUser            = flag.String("sasl-user", "", "SASL username.")
@@ -68,6 +68,9 @@ func main() {
 			topicSet := make(TopicSet)
 			time.Sleep(time.Duration(*refreshInt) * time.Second)
 			timer := prometheus.NewTimer(LookupHist)
+			if *debug {
+				log.Printf("Refreshing metadata")
+			}
 			client.RefreshMetadata()
 			// First grab our topics, all partiton IDs, and their offset head
 			topics, err := client.Topics()
@@ -137,6 +140,10 @@ func main() {
 }
 
 func refreshBroker(broker *sarama.Broker, topicSet TopicSet) {
+	if *debug {
+		log.Printf("Refreshing broker %d", broker.ID())
+	}
+
 	groupsRequest := new(sarama.ListGroupsRequest)
 	groupsResponse, err := broker.ListGroups(groupsRequest)
 
@@ -166,9 +173,7 @@ func refreshBroker(broker *sarama.Broker, topicSet TopicSet) {
 
 			for _, blocks := range offsetsResponse.Blocks {
 				for partition, block := range blocks {
-					if *debug {
-						log.Printf("Discovered group: %s, topic: %s, partition: %d, offset: %d\n", group, topic, partition, block.Offset)
-					}
+					var lag int
 					// Offset will be -1 if the group isn't active on the topic
 					if block.Offset >= 0 {
 						// Because our offset operations aren't atomic we could end up with a negative lag
@@ -183,6 +188,9 @@ func refreshBroker(broker *sarama.Broker, topicSet TopicSet) {
 								"partition": strconv.FormatInt(int64(partition), 10),
 							}).Set(math.Max(float64(block.Offset), 0))
 						}
+					}
+					if *debug {
+						log.Printf("Discovered group: %s, topic: %s, partition: %d, offset: %d, end: %d, lag: %d\n", group, topic, partition, block.Offset, data[partition], lag)
 					}
 				}
 			}

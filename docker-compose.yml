@@ -1,10 +1,15 @@
 version: '2'
 services:
     exporter:
-        build:
-            context: .
+        image: inomial.io/kafka-offset-lag-for-prometheus
+#        build: .
         environment:
-            - KAFKA_BROKERS=localhost:9092
-            - PROMETHEUS_ADDR=localhost:7979
-            - REFRESH_INTERVAL=15
+#            - KAFKA_BROKERS=kafka:9092
+#            - PROMETHEUS_ADDR=:7979
+#            - REFRESH_INTERVAL=15
             - DEBUG=true
+
+networks:
+  default:
+    external:
+      name: infrastructure

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -e
+
+docker build -t inomial.io/kafka-offset-lag-for-prometheus .
