@@ -173,11 +173,11 @@ func refreshBroker(broker *sarama.Broker, topicSet TopicSet) {
 
 			for _, blocks := range offsetsResponse.Blocks {
 				for partition, block := range blocks {
-					var lag int
+					var lag float64
 					// Offset will be -1 if the group isn't active on the topic
 					if block.Offset >= 0 {
 						// Because our offset operations aren't atomic we could end up with a negative lag
-						lag := math.Max(float64(data[partition]-block.Offset), 0)
+						lag = math.Max(float64(data[partition]-block.Offset), 0)
 						OffsetLag.With(prometheus.Labels{
 							"topic": topic, "group": group,
 							"partition": strconv.FormatInt(int64(partition), 10),
@@ -190,7 +190,7 @@ func refreshBroker(broker *sarama.Broker, topicSet TopicSet) {
 						}
 					}
 					if *debug {
-						log.Printf("Discovered group: %s, topic: %s, partition: %d, offset: %d, end: %d, lag: %d\n", group, topic, partition, block.Offset, data[partition], lag)
+						log.Printf("[Broker: %d] Discovered group: %s, topic: %s, partition: %d, offset: %d, end: %d, lag: %d\n", broker.ID(), group, topic, partition, block.Offset, data[partition], lag)
 					}
 				}
 			}
