@@ -190,7 +190,7 @@ func refreshBroker(broker *sarama.Broker, topicSet TopicSet) {
 						}
 					}
 					if *debug {
-						log.Printf("[Broker: %d] Discovered group: %s, topic: %s, partition: %d, offset: %d, end: %d, lag: %d\n", broker.ID(), group, topic, partition, block.Offset, data[partition], lag)
+						log.Printf("[Broker: %d] Discovered group: %s, topic: %s, partition: %d, offset: %d, end: %d, lag: %.0f\n", broker.ID(), group, topic, partition, block.Offset, data[partition], lag)
 					}
 				}
 			}
