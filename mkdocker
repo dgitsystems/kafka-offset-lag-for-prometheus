@@ -1,5 +1,45 @@
 #!/bin/bash
 
-set -e
+set -eu
 
-docker build -t inomial.io/kafka-offset-lag-for-prometheus .
+cd "$(dirname "$0")"
+
+# if running on Jenkins then determine the git origin and commit reference
+if [ "${BUILD_URL:-}" ] || git config --get remote.origin.url >/dev/null; then
+  VCS_URL=$(git config --get remote.origin.url) || {
+    echo 'no git remote origin url configured' >&2
+    false
+  }
+else
+  VCS_URL='Not a remote git repository'
+fi
+if [ "${BUILD_URL:-}" ] || git log --pretty=format:'%H' -n 1 >/dev/null; then
+  VCS_REF=$(git log --pretty=format:'%H' -n 1)
+else
+  VCS_REF=$(git log --pretty=format:'%H' -n 1 2>&1) || true
+fi
+
+BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+BUILD_VERSION=${versionNumber:-DEV}
+
+# abort if running on Jenkins (BUILD_URL is set) but BUILD_VERSION is still set to DEV
+if [ "${BUILD_URL:-}" ]; then
+  if [ "$BUILD_VERSION" = DEV ]; then
+    echo "BUILD_VERSION=$BUILD_VERSION not permitted on a Jenkins build." >&2
+    exit 1
+  fi
+fi
+
+project=kafka-offset-lag-for-prometheus
+description="Expose Kafka consumer offset lag to Prometheus"
+
+docker build \
+	--pull \
+	-t inomial.io/$project:${versionNumber:-latest} \
+	--build-arg project=$project \
+	--build-arg description="$description" \
+	--build-arg BUILD_DATE="$BUILD_DATE" \
+	--build-arg BUILD_VERSION="$BUILD_VERSION" \
+	--build-arg VCS_URL="$VCS_URL" \
+	--build-arg VCS_REF="$VCS_REF" \
+	.
